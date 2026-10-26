@@ -36,8 +36,7 @@ class EmissionServiceConfig:
     aggregation_trigger_path_override: str | None = None
     aggregation_reset_path_override: str | None = None
     current_cf_submodel_override: str | None = None
-    emission_factor_path: str = "emissionfactor"
-    pcfco2eq_path: str        = "ProductCarbonFootprintProduction.PcfCO2eq"
+
 
     # Helper function for generating station paths
     def _station_path(self, suffix: str) -> str:
