@@ -23,6 +23,8 @@ from aas_agent import (
     ListenerConfig,
     SubmodelElementConfig,
     SubmodelWatch,
+    AGVService,
+    AGVServiceConfig,
 )
 
 logging.basicConfig(
@@ -165,14 +167,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, handle_signal)
 
     services = [
-        EmissionService(emission_config_station_0),
-        EmissionService(emission_config_station_1),
-        EmissionService(emission_config_station_2),
-        EmissionService(emission_config_station_3),
-        EmissionService(emission_config_station_4),
-        EmissionService(emission_config_station_5),
-        EmissionService(emission_config_station_6),
-        EmissionService(emission_config_station_7),
+        AGVService(AGVServiceConfig()),
     ]
 
     # Reuse the exact service instances registered with AasAgent.

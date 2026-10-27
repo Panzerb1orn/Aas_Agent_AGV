@@ -6,7 +6,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 import matplotlib.animation as animation
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator  # type: ignore[reportMissingModuleSource]
 
 import threading
 import time

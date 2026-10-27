@@ -6,7 +6,6 @@ import threading
 from basyx.aas import model
 
 from PyARCL import Robot
-AMR = Robot('192.168.10.12')
 
 from ...config.AGV_service_config import AGVServiceConfig
 from ...core.base_operation_service import BaseOperationService, GuardResult
@@ -31,9 +30,14 @@ class AGVService(BaseOperationService):
                     including AAS URLs, submodel IDs, sensor path, and aggregation settings.
         """
         self._config = config
+        self.amr = Robot('192.168.10.12')
 
         """Read Battery Percentage"""
         battery_level = AMR.get_battery_level()
+
+        """Read current supply in Production Storage"""
+        current_supply = self._aas_client.get_value(self._config.current_supply_path)
+
 
 
 
