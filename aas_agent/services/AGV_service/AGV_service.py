@@ -5,7 +5,7 @@ import threading
 
 from basyx.aas import model
 
-#from PyARCL import Robot
+from PyARCL import Robot
 
 from ...config.AGV_service_config import AGVServiceConfig
 from ...core.base_operation_service import BaseOperationService, GuardResult
@@ -31,7 +31,7 @@ class AGVService(BaseOperationService):
                     including AAS URLs, submodel IDs, sensor path, and aggregation settings.
         """
         #self._config = config
-        #self.amr = Robot('192.168.10.12')
+        self.amr = Robot('192.168.10.12')
 
         # ── Configuration ───────────────────────────────────────────────────────
         self._base_url = "http://localhost:8082"
@@ -69,6 +69,16 @@ class AGVService(BaseOperationService):
             logger.error(f"Failed to fetch supply from AAS: {e}")
             return 0
 
+    def check_battery_level(self) -> int:
+        """Fetch the current battery level from the AGV."""
+        try:
+            # Replace with actual method to get battery level from the AGV
+            battery_level = self.amr.get_battery_level()  # Placeholder for actual API call
+            logger.info(f"Battery level fetched: {battery_level}%")
+            return battery_level
+        except Exception as e:
+            logger.error(f"Failed to fetch battery level: {e}")
+            return 0
 
 
 
