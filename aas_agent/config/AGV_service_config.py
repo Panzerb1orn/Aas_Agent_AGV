@@ -19,7 +19,7 @@ class AGVConfig:
 
 
 @dataclass
-class EmissionServiceConfig:
+class AGVServiceConfig:
     """Configuration for the emission service."""
     # Mandatory fields:
     base_url: str

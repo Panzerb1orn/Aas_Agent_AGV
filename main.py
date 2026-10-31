@@ -59,7 +59,7 @@ SENSOR_SUBMODEL_ID: Final[str] = "http://example.com/submodel/monitoring"
 # =============================================================================
 # Configuration of the agent and services
 # =============================================================================
-
+""" 
 emission_config_station_0: EmissionServiceConfig = EmissionServiceConfig(
     base_url=LOCAL_AAS,
     product_url=Product_AAS,
@@ -68,77 +68,8 @@ emission_config_station_0: EmissionServiceConfig = EmissionServiceConfig(
     station_index=0,
     aggregation=AggregationConfig(0.1, 3000),
 )
-"""EmissionService configuration for station 0 (reads `sensorvalue0`)."""
+EmissionService configuration for station 0 (reads `sensorvalue0`)."""
 
-emission_config_station_1: EmissionServiceConfig = EmissionServiceConfig(
-    base_url=LOCAL_AAS,
-    product_url=Product_AAS,
-    submodel_id=CF_SUBMODEL_ID,
-    sensor=SubmodelElementConfig(SENSOR_AAS, SENSOR_SUBMODEL_ID, "sensorvalue1"),
-    station_index=1,
-    aggregation=AggregationConfig(0.1, 3000),
-)
-"""EmissionService configuration for station 1 (reads `sensorvalue1`)."""
-
-emission_config_station_2: EmissionServiceConfig = EmissionServiceConfig(
-    base_url=LOCAL_AAS,
-    product_url=Product_AAS,
-    submodel_id=CF_SUBMODEL_ID,
-    sensor=SubmodelElementConfig(SENSOR_AAS, SENSOR_SUBMODEL_ID, "sensorvalue2"),
-    station_index=2,
-    aggregation=AggregationConfig(0.1, 3000),
-)
-"""EmissionService configuration for station 2 (reads `sensorvalue2`)."""
-
-emission_config_station_3: EmissionServiceConfig = EmissionServiceConfig(
-    base_url=LOCAL_AAS,
-    product_url=Product_AAS,
-    submodel_id=CF_SUBMODEL_ID,
-    sensor=SubmodelElementConfig(SENSOR_AAS, SENSOR_SUBMODEL_ID, "sensorvalue3"),
-    station_index=3,
-    aggregation=AggregationConfig(0.1, 3000),
-)
-"""EmissionService configuration for station 3 (reads `sensorvalue3`)."""
-
-emission_config_station_4: EmissionServiceConfig = EmissionServiceConfig(
-    base_url=LOCAL_AAS,
-    product_url=Product_AAS,
-    submodel_id=CF_SUBMODEL_ID,
-    sensor=SubmodelElementConfig(SENSOR_AAS, SENSOR_SUBMODEL_ID, "sensorvalue4"),
-    station_index=4,
-    aggregation=AggregationConfig(0.1, 3000),
-)
-"""EmissionService configuration for station 4 (reads `sensorvalue4`)."""
-
-emission_config_station_5: EmissionServiceConfig = EmissionServiceConfig(
-    base_url=LOCAL_AAS,
-    product_url=Product_AAS,
-    submodel_id=CF_SUBMODEL_ID,
-    sensor=SubmodelElementConfig(SENSOR_AAS, SENSOR_SUBMODEL_ID, "sensorvalue5"),
-    station_index=5,
-    aggregation=AggregationConfig(0.1, 3000),
-)
-"""EmissionService configuration for station 5 (reads `sensorvalue5`)."""
-
-emission_config_station_6: EmissionServiceConfig = EmissionServiceConfig(
-    base_url=LOCAL_AAS,
-    product_url=Product_AAS,
-    submodel_id=CF_SUBMODEL_ID,
-    sensor=SubmodelElementConfig(SENSOR_AAS, SENSOR_SUBMODEL_ID, "sensorvalue6"),
-    station_index=6,
-    aggregation=AggregationConfig(0.1, 3000),
-)
-"""EmissionService configuration for station 6 (reads `sensorvalue6`)."""
-
-emission_config_station_7: EmissionServiceConfig = EmissionServiceConfig(
-    base_url=LOCAL_AAS,
-    product_url=Product_AAS,
-    submodel_id=CF_SUBMODEL_ID,
-    sensor=SubmodelElementConfig(SENSOR_AAS, SENSOR_SUBMODEL_ID, "sensorvalue7"),
-    station_index=7,
-    aggregation=AggregationConfig(0.1, 3000),
-)
-"""EmissionService configuration for station 7 (reads `sensorvalue7`)."""
 
 
 # =============================================================================
@@ -167,7 +98,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, handle_signal)
 
     services = [
-        AGVService(AGVServiceConfig()),
+        AGVService(),
     ]
 
     # Reuse the exact service instances registered with AasAgent.
@@ -180,7 +111,7 @@ def main() -> None:
             watches=[
                 SubmodelWatch(
                     base_url=LOCAL_AAS,
-                    submodel_id=CF_SUBMODEL_ID,
+                    submodel_id="https://www.example.com/subodel/partstorage/1",
                     services=services,
                 ),
             ],

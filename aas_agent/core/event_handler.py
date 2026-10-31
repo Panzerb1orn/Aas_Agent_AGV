@@ -112,7 +112,7 @@ class EventHandler:
         """Accept Go CloudEvents or the original Java element topics."""
         try:
             event = json.loads(payload)
-        except json.JSONDecodeError, TypeError:
+        except (json.JSONDecodeError, TypeError):
             logger.warning("Invalid JSON on %s", topic)
             return
         if not isinstance(event, dict):
@@ -190,7 +190,7 @@ class EventHandler:
         try:
             value = json.loads(payload).get("value")
             return None if value is None else str(value)
-        except json.JSONDecodeError, AttributeError, TypeError:
+        except (json.JSONDecodeError, AttributeError, TypeError):
             return None
 
     def _should_execute(

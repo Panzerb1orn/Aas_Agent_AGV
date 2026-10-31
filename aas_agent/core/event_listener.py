@@ -103,7 +103,7 @@ class EventListener:
     ) -> None:
         try:
             self._on_message(message.topic, message.payload.decode("utf-8"))
-        except UnicodeDecodeError, ValueError, TypeError:
+        except (UnicodeDecodeError, ValueError, TypeError):
             logger.exception("Invalid MQTT message on %s", message.topic)
 
     def _handle_disconnect(
