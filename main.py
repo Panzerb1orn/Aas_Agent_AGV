@@ -78,58 +78,58 @@ EmissionService configuration for station 0 (reads `sensorvalue0`)."""
 
 
 def main() -> None:
-    """Start the AAS agent and waits for a stop signal.
-
-    Process:
-        1. Register signal handlers for SIGTERM and SIGINT (Ctrl+C).
-        2. Creates eight EmissionServices (Station 0 through 7).
-        3. Starts the AasAgent with these services.
-        4. Blocks until a stop signal is received.
-        5. Shuts down the agent cleanly.
-    """
+    """Start the AGV agent and wait for a stop signal."""
     stop_event = threading.Event()
-
-    def handle_signal(sig: int, frame: types.FrameType | None) -> None:
-        """Set the stop event when SIGTERM or SIGINT is received."""
+    def handle_signal(
+        sig: int,
+        frame: types.FrameType | None,
+    ) -> None:
+        """Request a graceful shutdown."""
         logging.info("Signal received, shutting down...")
         stop_event.set()
-
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
-
-    services = [
-        AGVService(AGVServiceConfig()),
-    ]
-
-    # Reuse the exact service instances registered with AasAgent.
-    # Add another SubmodelWatch for each additional repository/submodel.
+    agv_service = AGVService(AGVServiceConfig())
+    services = [agv_service]
     agent_config = AgentConfig(
         listener=ListenerConfig(
             mode=EVENT_MODE,
             host=MQTT_HOST,
+            client_id="aas-agent-agv",
             poll_interval_seconds=POLL_INTERVAL_SECONDS,
             watches=[
                 SubmodelWatch(
                     base_url=LOCAL_AAS,
-                    submodel_id="https://www.example.com/subodel/partstorage/1",
-                    services=services,
+                    submodel_id=(
+                        "https://www.example.com/subodel/partstorage/1"
+                    ),
+                    services=[agv_service],
+                    operation_topics=[
+                        "Red_parts",
+                        "min_number_red_parts",
+                    ],
                 ),
                 SubmodelWatch(
                     base_url=LOCAL_AAS,
-                    submodel_id="https://www.example.com/subodel/agv/1",
-                    services=services,
+                    submodel_id=(
+                        "https://www.example.com/subodel/agv/1"
+                    ),
+                    services=[agv_service],
+                    operation_topics=[
+                        "min_battery_allowed",
+                    ],
                 ),
             ],
         ),
     )
-
     agent = AasAgent(agent_config, services)
-    agent.start()
-    print(f"Agent running in {EVENT_MODE} mode...")
-
-    stop_event.wait()
-    agent.stop()
-
+    try:
+        agent.start()
+        print(f"Agent running in {EVENT_MODE} mode...")
+        stop_event.wait()
+    finally:
+        agent.stop()
 
 if __name__ == "__main__":
     main()
+ 
