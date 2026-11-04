@@ -5,7 +5,7 @@ import threading
 
 from basyx.aas import model
 
-from PyARCL import Robot
+from ...PyARCL.PyARCL import Robot
 
 from ...config.AGV_service_config import AGVServiceConfig
 from ...core.base_operation_service import BaseOperationService, GuardResult
@@ -31,7 +31,7 @@ class AGVService(BaseOperationService):
                     including AAS URLs, submodel IDs, sensor path, and aggregation settings.
         """
         #self._config = config
-        self.amr = Robot('192.168.10.12')
+        self.amr = Robot('192.168.10.28', password='zhaw', port=7171)
 
         # ── Configuration ───────────────────────────────────────────────────────
         self._base_url = "http://localhost:8082"
@@ -49,6 +49,7 @@ class AGVService(BaseOperationService):
 
         # ── Load initial values ────────────────────────────────────────────
         self._current_supply = self.update_current_supply()
+        self._battery_level = self.check_battery_level()
 
     def update_current_supply(self, payload: str = "") -> None:
         """Fetch the current supply from the AAS."""
@@ -72,8 +73,7 @@ class AGVService(BaseOperationService):
     def check_battery_level(self) -> int:
         """Fetch the current battery level from the AGV."""
         try:
-            # Replace with actual method to get battery level from the AGV
-            battery_level = self.amr.get_battery_level()  # Placeholder for actual API call
+            battery_level = self.amr.status.stateOfCharge
             logger.info(f"Battery level fetched: {battery_level}%")
             return battery_level
         except Exception as e:
@@ -84,7 +84,7 @@ class AGVService(BaseOperationService):
 
     # def check_and_dispatch(self) -> None:
     #     """Check battery and supply levels, then dispatch AGV if conditions are met."""
-    #     battery_level = self.amr.get_battery_level()
+    #     battery_level = self.amr.status.stateOfCharge
     #     current_supply = self.get_current_supply()
 
     #     logger.info(f"Battery Level: {battery_level}%, Current Supply: {current_supply}")

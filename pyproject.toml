@@ -3,7 +3,7 @@ name = "aas-agent"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "aas-python-http-client>=1.0.2",
     "basyx-python-sdk>=2.0.0",
