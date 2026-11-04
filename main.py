@@ -98,7 +98,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, handle_signal)
 
     services = [
-        AGVService(),
+        AGVService(AGVServiceConfig()),
     ]
 
     # Reuse the exact service instances registered with AasAgent.
@@ -112,6 +112,11 @@ def main() -> None:
                 SubmodelWatch(
                     base_url=LOCAL_AAS,
                     submodel_id="https://www.example.com/subodel/partstorage/1",
+                    services=services,
+                ),
+                SubmodelWatch(
+                    base_url=LOCAL_AAS,
+                    submodel_id="https://www.example.com/subodel/agv/1",
                     services=services,
                 ),
             ],

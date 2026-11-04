@@ -14,19 +14,33 @@ class SubmodelElementConfig:
 @dataclass
 class AGVConfig:
     """Configuration for aggregation settings in the emission service."""
-    Battery_interval_seconds: int = 1    # Intervall zwischen Battery readings
-    aggregation_max_count: int = 300         # Max Anzahl Schritte pro Lauf
+    Battery_interval_seconds: int = 300    # Intervall zwischen Battery readings
 
 
 @dataclass
 class AGVServiceConfig:
     """Configuration for the emission service."""
-    # Mandatory fields:
-    base_url: str
-    product_url: str
-    submodel_id: str
-    sensor: SubmodelElementConfig
-    station_index: int
+    robot_enabled: bool = False
+    robot_host: str = "192.168.10.28"
+    robot_password: str = "zhaw"
+    robot_port: int = 7171
+    base_url: str = "http://localhost:8082"
+    product_url: str = "http://localhost:8082"
+    submodel_id: str = "https://www.example.com/subodel/partstorage/1"
+    agv_submodel_id: str = "https://www.example.com/subodel/agv/1"
+    sensor: SubmodelElementConfig = field(
+        default_factory=lambda: SubmodelElementConfig(
+            "http://localhost:8082",
+            "http://example.com/submodel/monitoring",
+            "sensorvalue0",
+        )
+    )
+    station_index: int = 0
+
+    # Production storage values
+    value_idshort: str = "Red_parts"
+    min_number_red_parts: str = "min_number_red_parts"
+    min_battery_allowed_idshort: str = "min_battery_allowed"
 
     # Aggregation settings
     AGV: AGVConfig = field(default_factory=lambda: AGVConfig())
