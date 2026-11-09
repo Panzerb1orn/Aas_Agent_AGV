@@ -41,6 +41,7 @@ class AGVService(BaseOperationService):
 
         # ── Locks ─────────────────────────────────────────────────────────
         self._battery_level_lock = threading.Lock()
+        self._battery_level: int | None = None
         # self._aggregation_lock     = threading.Lock()
         # self._CFSubmodel_lock      = threading.Lock()        
 
@@ -56,6 +57,10 @@ class AGVService(BaseOperationService):
         self._value_idshort = self._config.value_idshort
         self._min_number_red_parts = self._config.min_number_red_parts
         self._min_battery_allowed_idshort = self._config.min_battery_allowed_idshort
+        self._replenishment_goal = self._config.replenishment_goal
+        self._dispatch_sent = False
+        self._charging_sent = False
+        self._robot_status: str | None = None
 
         # ── BaseOperationService init (empty registry) ────────────────────
         super().__init__()
@@ -72,9 +77,13 @@ class AGVService(BaseOperationService):
         self._current_supply = self.update_current_supply()
         self._min_supply = self.update_min_supply()
         self._min_battery_allowed = self.update_min_battery_allowed()
-        self._battery_level = None
         if self._config.robot_enabled:
             self._battery_level = self.check_battery_level()
+        else:
+            logger.info("Robot operation disabled")
+        self.update_battery_charge()
+        self.check_and_dispatch()
+        self.check_and_charge()
 
         # ── Start Background Monitor ───────────────────────────────────────
         self._stop_monitor = threading.Event()
@@ -91,6 +100,9 @@ class AGVService(BaseOperationService):
         # wait() returns False if the time elapsed, or True if the event was set (meaning we should stop)
         while not self._stop_monitor.wait(self._config.AGV.Battery_interval_seconds):  
             self._battery_level = self.check_battery_level()
+            self.update_battery_charge()
+            self.check_and_dispatch()
+            self.check_and_charge()
             logger.info(f"Scheduled Update: Battery level is {self._battery_level}%")
 
     def stop(self) -> None:
@@ -100,29 +112,31 @@ class AGVService(BaseOperationService):
             self._monitor_thread.join()
         super().stop()
 
-    def update_current_supply(self, payload: str = "") -> None:
+    def update_current_supply(self, payload: str = "") -> int | None:
         """Fetch the current supply from the AAS."""
         try:
-            response = self._part_storage_client.get_value_list(self._value_idshort)
+            response = self._part_storage_client.get_value(self._value_idshort)
             logger.info(f"Current supply fetched: {response}")
 
             self._current_supply = int(response)
-            return
+            self.check_and_dispatch()
+            return self._current_supply
         except Exception as e:
             logger.error(f"Failed to fetch supply from AAS: {e}")
-            return 0
+            return None
         
-    def update_min_supply(self, payload: str = "") -> None:
-        """Fetch the current supply from the AAS."""
+    def update_min_supply(self, payload: str = "") -> int | None:
+        """Fetch the minimum supply from the AAS."""
         try:
-            response = self._part_storage_client.get_value_list(self._min_number_red_parts)
+            response = self._part_storage_client.get_value(self._min_number_red_parts)
             logger.info(f"Minimum supply fetched: {response}")
 
-            self._current_supply = int(response)
-            return
+            self._min_supply = int(response)
+            self.check_and_dispatch()
+            return self._min_supply
         except Exception as e:
-            logger.error(f"Failed to fetch minimumsupply from AAS: {e}")
-            return 0
+            logger.error(f"Failed to fetch minimum supply from AAS: {e}")
+            return None
 
     def update_min_battery_allowed(self, payload: str = "") -> int | None:
         """Fetch the minimum battery level allowed for AGV operation."""
@@ -135,26 +149,150 @@ class AGVService(BaseOperationService):
             logger.info(
                 f"Minimum allowed battery fetched: {self._min_battery_allowed}%"
             )
+            self.check_and_dispatch()
             return self._min_battery_allowed
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to parse minimum allowed battery: {e}")
             return None
 
-    def check_battery_level(self) -> None:
+    def check_battery_level(self) -> int | None:
         """Fetch the current battery level from the AGV."""
         if not self._config.robot_enabled or self.amr is None:
-            logger.info("Robot communication is disabled; skipping battery update.")
-            return
+            logger.info("Robot operation disabled")
+            with self._battery_level_lock:
+                self._battery_level = None
+            return None
 
         try:
-            battery_level = self.amr.status.stateOfCharge
+            status = self.amr.status
+            logger.info(
+                "Robot status: state=%s, charge=%s%%, location=%s, "
+                "localization_score=%s, temperature=%s",
+                status.aramStatus,
+                status.stateOfCharge,
+                status.location,
+                status.loc_score,
+                status.temperature,
+            )
+            self._robot_status = str(status.aramStatus).strip().lower()
+            battery_level = status.stateOfCharge
             logger.info(f"Battery level fetched: {battery_level}%")
             with self._battery_level_lock:
                 self._battery_level = battery_level
-            return 
+            return battery_level
         except Exception as e:
             logger.error(f"Failed to fetch battery level: {e}")
+            with self._battery_level_lock:
+                self._battery_level = None
+            return None
+
+    def update_battery_charge(self) -> None:
+        """Upload the current battery level to the AGV submodel."""
+        with self._battery_level_lock:
+            battery_level = self._battery_level
+
+        value = battery_level if battery_level is not None else 404
+        if self._agv_client.set_value("battery_charge", value):
+            logger.info(f"Battery charge uploaded: {value}%")
+        else:
+            logger.error(f"Failed to upload battery charge: {value}")
+
+    def check_and_dispatch(self) -> None:
+        """Send the AGV for replenishment when supply and battery levels allow it."""
+        current_supply = getattr(self, "_current_supply", None)
+        min_supply = getattr(self, "_min_supply", None)
+        min_battery = getattr(self, "_min_battery_allowed", None)
+
+        if current_supply is None or min_supply is None or min_battery is None:
             return
+
+        with self._battery_level_lock:
+            battery_level = self._battery_level
+
+        if current_supply >= min_supply:
+            self._dispatch_sent = False
+            return
+
+        if self._dispatch_sent:
+            return
+
+        if battery_level is None or not self._config.robot_enabled or self.amr is None:
+            logger.error(
+                "Cannot dispatch AGV: battery level is not available."
+            )
+            return
+
+        if battery_level <= min_battery:
+            logger.error(
+                f"Cannot dispatch AGV: battery level is too low "
+                f"({battery_level}% <= minimum {min_battery}%)."
+            )
+            return
+
+        try:
+            self.amr.queuePickup(self._replenishment_goal)
+            self._dispatch_sent = True
+            logger.info(
+                f"AGV dispatched to {self._replenishment_goal}: "
+                f"supply={current_supply}, minimum={min_supply}, "
+                f"battery={battery_level}%"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to dispatch AGV to {self._replenishment_goal}: {e}"
+            )
+
+    def check_and_charge(self) -> None:
+        """Dock the AGV when its battery is low and it has no active job."""
+        if not self._config.robot_enabled or self.amr is None:
+            return
+
+        with self._battery_level_lock:
+            battery_level = self._battery_level
+        min_battery = getattr(self, "_min_battery_allowed", None)
+
+        battery_is_low = (
+            battery_level is not None
+            and min_battery is not None
+            and battery_level <= min_battery
+        )
+
+        if self._robot_status != "idle" and not battery_is_low:
+            self._charging_sent = False
+            return
+
+        if self._charging_sent:
+            return
+
+        try:
+            current_job_id = self.amr.info["Queue Job ID"]
+        except Exception as e:
+            logger.error(f"Cannot determine whether AGV has an active job: {e}")
+            return
+
+        if current_job_id:
+            try:
+                current_job = self.amr.queue[current_job_id]
+                if not current_job.iscomplete:
+                    logger.info(
+                        f"AGV charging deferred while job '{current_job_id}' is active."
+                    )
+                    return
+            except Exception as e:
+                logger.error(
+                    f"Cannot determine completion of AGV job '{current_job_id}': {e}"
+                )
+                return
+
+        try:
+            self.amr.dock()
+            self._charging_sent = True
+            logger.info(
+                f"AGV sent to charge: battery={battery_level}%, "
+                f"minimum={min_battery}%"
+            )
+        except Exception as e:
+            logger.error(f"Failed to send AGV to charge: {e}")
 
 
 

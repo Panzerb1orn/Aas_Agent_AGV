@@ -41,6 +41,7 @@ class AGVServiceConfig:
     value_idshort: str = "Red_parts"
     min_number_red_parts: str = "min_number_red_parts"
     min_battery_allowed_idshort: str = "min_battery_allowed"
+    replenishment_goal: str = "ProductionStorage"
 
     # Aggregation settings
     AGV: AGVConfig = field(default_factory=lambda: AGVConfig())
